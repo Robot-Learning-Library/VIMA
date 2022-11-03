@@ -1,0 +1,3 @@
+python scripts/example.py --ckpt=models/4M.ckpt --task=rotate
+
+

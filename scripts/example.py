@@ -10,7 +10,7 @@ import cv2
 from vima.utils import *
 from vima import create_policy_from_ckpt
 from vima_bench import *
-from gym.wrappers import TimeLimit as _TimeLimit
+from gym_wrappers import TimeLimit as _TimeLimit
 from gym import Wrapper
 import torch
 import argparse
@@ -118,6 +118,7 @@ def main(cfg):
                 prompt_tokens, prompt_masks = policy.forward_prompt_assembly(
                     (prompt_token_type, word_batch, image_batch)
                 )
+                import pdb; pdb.set_trace()
 
                 inference_cache["obs_tokens"] = []
                 inference_cache["obs_masks"] = []
@@ -364,10 +365,11 @@ def prepare_prompt(*, prompt: str, prompt_assets: dict, views: list[str]):
         word_batch
     ) + len(image_batch)
     word_batch = any_stack(word_batch, dim=0)
-    image_batch = any_to_datadict(stack_sequence_fields(image_batch))
+    if len(image_batch) > 0: 
+        image_batch = any_to_datadict(stack_sequence_fields(image_batch))
+        image_batch = image_batch.to_torch_tensor()        
 
     word_batch = any_to_torch_tensor(word_batch)
-    image_batch = image_batch.to_torch_tensor()
     return raw_prompt_token_type, word_batch, image_batch
 
 
@@ -479,10 +481,10 @@ class ResetFaultToleranceWrapper(Wrapper):
     def __init__(self, env):
         super().__init__(env)
 
-    def reset(self):
+    def reset(self, *args, **kwargs):
         for _ in range(self.max_retries):
             try:
-                return self.env.reset()
+                return self.env.reset(*args, **kwargs)
             except:
                 current_seed = self.env.unwrapped.task.seed
                 self.env.global_seed = current_seed + 1
