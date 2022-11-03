@@ -118,7 +118,6 @@ def main(cfg):
                 prompt_tokens, prompt_masks = policy.forward_prompt_assembly(
                     (prompt_token_type, word_batch, image_batch)
                 )
-                import pdb; pdb.set_trace()
 
                 inference_cache["obs_tokens"] = []
                 inference_cache["obs_masks"] = []
