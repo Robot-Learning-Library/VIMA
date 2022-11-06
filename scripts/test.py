@@ -5,12 +5,7 @@ from vima_bench import *
 from example import *
 # from vima_bench.tasks.components.encyclopedia import ObjPedia
 
-task_kwargs = {
-    'dragged_obj_express_types': "name",
-    'base_obj_express_types': 'name',
-    'possible_base_obj': 'block',
-    'possible_dragged_obj': 'block',
-    }
+
 # env = make(task_name="visual_manipulation", task_kwargs=task_kwargs)
 # # env = make(task_name="scene_understanding", task_kwargs=task_kwargs)
 
@@ -18,6 +13,34 @@ task_kwargs = {
 # env.render()
 # prompt, prompt_assets = env.prompt, env.prompt_assets
 # print(prompt, prompt_assets)
+
+task_name = ['visual_manipulation', 'rotate'][0]
+
+task_kwargs = {
+     'rotate': {
+    'dragged_obj_express_types': "name",
+    'possible_dragged_obj': 'L-shaped block',
+    'possible_dragged_obj_texture': ['red'],  # at least two (two objects), color or TextureEntry
+    'possible_distractor_obj_texture': ['green'], 
+     },
+
+    'visual_manipulation': {
+    'dragged_obj_express_types': "name",
+    'base_obj_express_types': 'name',
+    'possible_dragged_obj': 'block',
+    'possible_base_obj': 'block',
+    'possible_dragged_obj_texture': ['red and purple polka dot'], # at least one of dragged and base needs to be > 1, to give distractor obj a different color
+    'possible_base_obj_texture': ['green swirl'],
+    'possible_distractor_obj_texture': ['blue'],
+    }
+    }
+
+test_prompt = {
+    'rotate': 'Rotate the red L-shaped block 30 degrees.',
+    'visual_manipulation': "Put the red and purple polka dot block into the green swirl block."
+}
+
+
 
 model_ckpt = '../models/4M.ckpt'
 device = 'cpu'
@@ -27,10 +50,9 @@ policy = create_policy_from_ckpt(model_ckpt, device)
 env = TimeLimitWrapper(
     ResetFaultToleranceWrapper(
         make(
-            # task_name="visual_manipulation", task_kwargs=task_kwargs
-            "visual_manipulation",
+            task_name=task_name,
             modalities=["segm", "rgb"],
-            task_kwargs=task_kwargs,
+            task_kwargs=task_kwargs[task_name],
             # task_kwargs=PARTITION_TO_SPECS["test"][cfg.partition][cfg.task],
             seed=seed,
             render_prompt=True,
@@ -43,7 +65,8 @@ env = TimeLimitWrapper(
 
 while True:
     env.global_seed = seed
-    prompt = "Put the red and purple polka dot block into the green swirl block."
+    # prompt = None
+    prompt = test_prompt[task_name]
     obs = env.reset(prompt)
     # obs = env.reset()
     # env.set_prompt_and_assets(prompt=prompt, assets={})  # this will not fully specify the promt in task
