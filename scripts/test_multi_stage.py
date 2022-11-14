@@ -6,6 +6,7 @@ from vima_bench import *
 from example import *
 from common import *
 from cot_query import load_prompt, query
+from logger import Logger
 
 task_names = {
     'stack':'visual_manipulation', 
@@ -129,33 +130,8 @@ def parse_instruct(instruct, type):
 
     return task_kwargs, instruct_list
 
-# task_kwargs = {
-#     'rotate': {
-#     'dragged_obj_express_types': "name",
-#     'possible_dragged_obj': 'L-shaped block',
-#     'possible_dragged_obj_texture': ['red'],  # at least two (two objects), color or TextureEntry
-#     'possible_distractor_obj_texture': ['green'], 
-#      },
-
-#     'visual_manipulation': {
-#     'dragged_obj_express_types': "name",
-#     'base_obj_express_types': 'name',
-#     'possible_dragged_obj': 'block',
-#     # 'possible_base_obj': 'block',
-#     'possible_base_obj': 'container',
-#     'possible_dragged_obj_texture': ['red and purple polka dot'], # at least one of dragged and base needs to be > 1, to give distractor obj a different color
-#     'possible_base_obj_texture': ['green swirl'],
-#     'possible_distractor_obj_texture': ['blue'],
-#     'num_dragged_obj': 3,
-#     }
-#     }
-
-# test_prompts = {
-#     'rotate': ['Rotate the red L-shaped block 30 degrees.','Rotate the red L-shaped block 10 degrees.','Rotate the red L-shaped block 60 degrees.'],
-#     'visual_manipulation': "Put the red and purple polka dot block in the green swirl container."
-# }
-
 def rollout(policy, task_type, seed, device):
+    logger = Logger()
     general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:1]
 
     for i, general_instruction in enumerate(general_instructs):
@@ -333,10 +309,13 @@ def rollout(policy, task_type, seed, device):
                 if done:
                     break
 
+        logger.track_data(general_instruction, CoT_prompt, success)
+
         env.close()
+    logger.save('data/')
 
 if __name__ == "__main__":
-    task_type = ['stack', 'rotate', 'put'][0]
+    task_type = ['stack', 'rotate', 'put'][1]
     model_ckpt = '../models/200M.ckpt'
     device = 'cpu'
 
