@@ -14,10 +14,10 @@ from example import *
 # prompt, prompt_assets = env.prompt, env.prompt_assets
 # print(prompt, prompt_assets)
 
-task_name = ['visual_manipulation', 'rotate'][0]
+task_name = ['visual_manipulation', 'rotate'][1]
 
 task_kwargs = {
-     'rotate': {
+    'rotate': {
     'dragged_obj_express_types': "name",
     'possible_dragged_obj': 'L-shaped block',
     'possible_dragged_obj_texture': ['red'],  # at least two (two objects), color or TextureEntry
@@ -28,21 +28,24 @@ task_kwargs = {
     'dragged_obj_express_types': "name",
     'base_obj_express_types': 'name',
     'possible_dragged_obj': 'block',
-    'possible_base_obj': 'block',
+    # 'possible_base_obj': 'block',
+    'possible_base_obj': 'container',
     'possible_dragged_obj_texture': ['red and purple polka dot'], # at least one of dragged and base needs to be > 1, to give distractor obj a different color
     'possible_base_obj_texture': ['green swirl'],
     'possible_distractor_obj_texture': ['blue'],
+    'num_dragged_obj': 3,
     }
     }
 
 test_prompt = {
     'rotate': 'Rotate the red L-shaped block 30 degrees.',
-    'visual_manipulation': "Put the red and purple polka dot block into the green swirl block."
+    # 'visual_manipulation': "Put the red and purple polka dot block in the green swirl block."
+    'visual_manipulation': "Put the red and purple polka dot block in the green swirl container."
 }
 
 
 
-model_ckpt = '../models/4M.ckpt'
+model_ckpt = '../models/200M.ckpt'
 device = 'cpu'
 
 seed = 42
@@ -207,5 +210,6 @@ while True:
         actions = any_slice(actions, np.s_[0, 0])
         obs, _, done, info = env.step(actions)
         elapsed_steps += 1
+        print(elapsed_steps, done)
         if done:
             break
