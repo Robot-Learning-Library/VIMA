@@ -14,7 +14,7 @@ from example import *
 # prompt, prompt_assets = env.prompt, env.prompt_assets
 # print(prompt, prompt_assets)
 
-task_name = ['visual_manipulation', 'rotate'][1]
+task_name = ['visual_manipulation', 'rotate'][0]
 
 task_kwargs = {
     'rotate': {

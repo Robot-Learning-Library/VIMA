@@ -71,10 +71,10 @@ def parse_instruct(instruct, type):
         task_kwargs = {
         'dragged_obj_express_types': "name",
         'base_obj_express_types': 'name',
-        'possible_dragged_obj': drag_obj_list,
-        'possible_base_obj': base_obj_list,
-        'possible_dragged_obj_texture': drag_color_list,
-        'possible_base_obj_texture': base_color_list,
+        'specified_dragged_obj': drag_obj_list,
+        'specified_base_obj': base_obj_list,
+        'specified_dragged_obj_texture': drag_color_list,
+        'specified_base_obj_texture': base_color_list,
         'possible_distractor_obj_texture': distractor_color,
         'num_dragged_obj': len(drag_obj_list),
         }
@@ -85,19 +85,21 @@ def parse_instruct(instruct, type):
         base_obj_list = []
         drag_color_list = []
         base_color_list = []
+        try:
+            for i, ins in enumerate(instruct_list):
+                # Put yellow ring into purple container
+                words = ins.split(' ')
+                drag_color = words[words.index('Put')+1]
+                if words.index('into') - words.index('Put') == 4:  # color for 1, two-word obj for 2
+                    drag_obj = ' '.join(words[words.index('Put')+2:words.index('Put')+4])
+                else: # color for 1, one-word obj for 1
+                    drag_obj = words[words.index('Put')+2] 
 
-        for i, ins in enumerate(instruct_list):
-            # Put yellow ring into purple container
-            words = ins.split(' ')
-            drag_color = words[words.index('Put')+1]
-            if words.index('into') - words.index('Put') == 4:  # color for 1, two-word obj for 2
-                drag_obj = ' '.join(words[words.index('Put')+2:words.index('Put')+4])
-            else: # color for 1, one-word obj for 1
-                drag_obj = words[words.index('Put')+2] 
-
-            drag_obj = drag_obj.replace('.', '')
-            drag_obj_list.append(drag_obj)
-            drag_color_list.append(drag_color)
+                drag_obj = drag_obj.replace('.', '')
+                drag_obj_list.append(drag_obj)
+                drag_color_list.append(drag_color)
+        except:
+            print(f'Fail: {instruct_list}')
 
         # one instruction for base is sufficient (only one base) 
         base_color = words[words.index('into')+1]
@@ -117,10 +119,10 @@ def parse_instruct(instruct, type):
         task_kwargs = {
         'dragged_obj_express_types': "name",
         'base_obj_express_types': 'name',
-        'possible_dragged_obj': drag_obj_list,
-        'possible_base_obj': base_obj_list,
-        'possible_dragged_obj_texture': drag_color_list,
-        'possible_base_obj_texture': base_color_list,
+        'specified_dragged_obj': drag_obj_list,  # using specified, obj-color is one-to-one mapped
+        'specified_dragged_obj_texture': drag_color_list,
+        'specified_base_obj': base_obj_list,
+        'specified_base_obj_texture': base_color_list,
         'possible_distractor_obj_texture': distractor_color,
         'num_dragged_obj': len(drag_obj_list),
         }
@@ -154,7 +156,7 @@ def parse_instruct(instruct, type):
 # }
 
 def rollout(policy, task_type, seed, device):
-    general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:2]
+    general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:1]
 
     for i, general_instruction in enumerate(general_instructs):
         print(f'{i}-th general instruction: {general_instruction}')
@@ -334,7 +336,7 @@ def rollout(policy, task_type, seed, device):
         env.close()
 
 if __name__ == "__main__":
-    task_type = ['stack', 'rotate', 'put'][-1]
+    task_type = ['stack', 'rotate', 'put'][0]
     model_ckpt = '../models/200M.ckpt'
     device = 'cpu'
 
