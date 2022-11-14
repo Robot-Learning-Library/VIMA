@@ -1,0 +1,3 @@
+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
+
+curl https://api.openai.com/v1/models -H 'Authorization: Bearer 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' -H 'OpenAI-Organization: org-ASVyDkhQ8rJjEQlABoHSMg07'
