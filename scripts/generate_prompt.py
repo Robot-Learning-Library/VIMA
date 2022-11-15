@@ -138,7 +138,7 @@ def prompt_construct(type='stack', confs={}, ):
 def prompt_generate(type ='stack', num_prompts = 5):
     num_examples = [1,2,3]
 
-    n_steps = np.arange(TASK_CONFS[type]['min_steps'], TASK_CONFS[type]['min_steps']+1)
+    n_steps = np.arange(TASK_CONFS[type]['min_steps'], TASK_CONFS[type]['max_steps']+1)
 
     if type == 'rotate':
         num_objs = [1]
@@ -158,9 +158,11 @@ def prompt_generate(type ='stack', num_prompts = 5):
 
     return prompts
 
-type = ['stack', 'rotate', 'put'][-1]
-prompts = prompt_generate(type)
-np.save(f'prompts/{type}_prompts', prompts)
+if __name__ == "__main__":
 
-prompts = np.load(f'prompts/{type}_prompts.npy')
-print(prompts)
+    type = ['stack', 'rotate', 'put'][-1]
+    prompts = prompt_generate(type)
+    np.save(f'prompts/{type}_prompts', prompts)
+
+    prompts = np.load(f'prompts/{type}_prompts.npy')
+    print(prompts)
