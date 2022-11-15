@@ -384,7 +384,7 @@ def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3,
             logger.save(f'data/{prefix}')
 
 if __name__ == "__main__":
-    task_type = ['stack', 'rotate', 'put'][-1]
+    task_type = ['stack', 'rotate', 'put'][1]
     model_size = ['4M', '200M'][-1]
     model_ckpt = f'../models/{model_size}.ckpt'
     device = 'cpu'
