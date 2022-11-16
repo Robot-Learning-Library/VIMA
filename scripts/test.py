@@ -39,8 +39,8 @@ task_kwargs = {
 
 test_prompt = {
     'rotate': 'Rotate the red L-shaped block 30 degrees.',
-    # 'visual_manipulation': "Put the red and purple polka dot block in the green swirl block."
-    'visual_manipulation': "Put the red and purple polka dot block in the green swirl container."
+    'visual_manipulation': "Put the red and purple polka dot block in the green swirl container.",
+    # 'stack': 'Put red block on green block.'
 }
 
 

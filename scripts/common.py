@@ -12,7 +12,7 @@ BASE_OBJECTS = ['square', 'container']
 TASK_CONFS = {
     'stack': {
         'min_steps': 2,
-        'max_steps': 5,
+        'max_steps': 4,
     },
     'rotate': {
         'min_steps': 2,

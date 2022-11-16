@@ -108,9 +108,9 @@ def parse_instruct(instruct, type):
         'dragged_obj_express_types': "name",
         'base_obj_express_types': 'name',
         'specified_dragged_obj': drag_obj_list,
-        'specified_base_obj': base_obj_list,
+        'specified_base_obj': base_obj_list[:1],
         'specified_dragged_obj_texture': drag_color_list,
-        'specified_base_obj_texture': base_color_list,
+        'specified_base_obj_texture': base_color_list[:1],
         'possible_distractor_obj_texture': distractor_color,
         'num_dragged_obj': len(drag_obj_list),
         }
@@ -180,11 +180,9 @@ def parse_instruct(instruct, type):
 def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3, render=False):
     logger = Logger(task_type)
     # choose to load prompts or generate new prompts
-    # general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:1]  # load prompts
-
+    # general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:3]  # load prompts
     general_instructs = prompt_generate(type=task_type, num_prompts=num_prompts)  # generate prompts
-    # print(general_instructs)
-    # return
+
     for i, general_instruction in enumerate(general_instructs):
         print(f"Progess: {i}/{num_prompts} instructions\n ------------------------\n")
         if i % 10 ==0:
@@ -231,7 +229,8 @@ def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3,
                         keep_scene=False
                         if prompt_step > 0:
                             keep_scene=True
-                        obs = env.reset(prompt, keep_scene=keep_scene)
+                        obs = env.reset(prompt, keep_scene=keep_scene, task_type=task_type)
+
                         if render: env.render()
 
                         meta_info = env.meta_info
@@ -390,7 +389,7 @@ def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3,
             logger.save(f'data/{prefix}')
 
 if __name__ == "__main__":
-    task_type = ['stack', 'rotate', 'put'][-1]
+    task_type = ['stack', 'rotate', 'put'][0]
     model_size = ['4M', '200M'][-1]
     model_ckpt = f'../models/{model_size}.ckpt'
     device = 'cpu'

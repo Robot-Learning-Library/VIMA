@@ -147,8 +147,8 @@ def prompt_generate(type ='stack', num_prompts = 5):
     prompts = []
     for i in range(num_prompts):
         n_example = np.random.choice(num_examples)
-        if type == 'stack':
-            p = prompt_construct(type='stack', confs={'num_obj': np.random.choice(n_steps, size=n_example+1), 'num_examples': n_example})
+        if type == 'stack': # n steps require at least n+1 objects
+            p = prompt_construct(type='stack', confs={'num_obj': np.random.choice(n_steps+1, size=n_example+1), 'num_examples': n_example})
         elif type == 'rotate':
             p = prompt_construct(type='rotate', confs={'rotate_range':[90, 180], 'rotate_steps': n_steps, 'step_range': step_range, 'num_examples': n_example})
         elif type == 'put':
