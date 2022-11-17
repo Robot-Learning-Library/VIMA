@@ -47,6 +47,12 @@ def prompt_construct(type='stack', confs={}, ):
 
     elif type == 'rotate':
         prompt = ''
+        def get_angles(rot_angle, n):
+            rand=np.random.uniform(0,1, n)
+            norm_rand=rand/np.sum(rand)*rot_angle
+            angles=[int(angle) if i < n else angle for i, angle in enumerate(norm_rand)]
+            angles[-1] = rot_angle - sum(angles[:-1]) # make sure the last angle is the remaining angle
+            return angles
         for j in range(confs['num_examples']):
             col = sample_discrete(COLORS)[0]
             obj = sample_discrete(OBJECTS)[0]
@@ -56,20 +62,12 @@ def prompt_construct(type='stack', confs={}, ):
             
             ans = " A: "
             instrs = ''
-            rotated_angles = 0
-            for i in range(n-1):
+            angles = get_angles(rot_angle, n)
+            for i in range(n):
                 instr = ROTATE_TEMPLATE.replace('DRAG_COLOR', col)
                 instr = instr.replace('DRAG_OBJECT', obj)
-                angle = sample_continuous(confs['step_range'])[0]
-                rotated_angles += angle
-                instr = instr.replace('ANGLE', str(angle))
+                instr = instr.replace('ANGLE', str(angles[i]))
                 instrs += instr
-
-            instr = ROTATE_TEMPLATE.replace('DRAG_COLOR', col)
-            instr = instr.replace('DRAG_OBJECT', obj)
-            angle = rot_angle - rotated_angles
-            instr = instr.replace('ANGLE', str(angle))
-            instrs += instr
 
             prompt += ques + ans + instrs
 
@@ -142,7 +140,6 @@ def prompt_generate(type ='stack', num_prompts = 5):
 
     if type == 'rotate':
         num_objs = [1]
-        step_range = [0, 45]
 
     prompts = []
     for i in range(num_prompts):
@@ -150,7 +147,7 @@ def prompt_generate(type ='stack', num_prompts = 5):
         if type == 'stack': # n steps require at least n+1 objects
             p = prompt_construct(type='stack', confs={'num_obj': np.random.choice(n_steps+1, size=n_example+1), 'num_examples': n_example})
         elif type == 'rotate':
-            p = prompt_construct(type='rotate', confs={'rotate_range':[90, 180], 'rotate_steps': n_steps, 'step_range': step_range, 'num_examples': n_example})
+            p = prompt_construct(type='rotate', confs={'rotate_range':[90, 180], 'rotate_steps': n_steps, 'num_examples': n_example})
         elif type == 'put':
             p = prompt_construct(type='put', confs={'num_obj': np.random.choice(n_steps, size=n_example+1), 'num_examples': n_example})
 
@@ -160,7 +157,7 @@ def prompt_generate(type ='stack', num_prompts = 5):
 
 if __name__ == "__main__":
 
-    type = ['stack', 'rotate', 'put'][-1]
+    type = ['stack', 'rotate', 'put'][1]
     prompts = prompt_generate(type)
     np.save(f'prompts/{type}_prompts', prompts)
 
