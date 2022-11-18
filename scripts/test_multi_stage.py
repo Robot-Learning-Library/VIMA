@@ -48,7 +48,14 @@ def parse_instruct(instruct, type):
             print(obj)
             valid = False
 
-        angle = words[anchor_pos2+1]
+        angles = []
+        for ins in instruct_list:
+            # Rotate blue triangle by 71 degrees.
+            words = ins.split(' ')
+            words = [i for i in words if i not in unuseful_words]  # filter
+            anchor_pos2 = words.index('by')
+            angle = words[anchor_pos2+1]
+            angles.append(int(angle))
         # print(words, color, obj, angle)
 
         # COLORS.remove(color)
@@ -60,6 +67,7 @@ def parse_instruct(instruct, type):
         'possible_dragged_obj': obj,
         'possible_dragged_obj_texture': [color],
         'possible_distractor_obj_texture': [distractor_color], 
+        'specified_angles_of_rotation': angles,
         }
 
     elif type == 'stack':
@@ -177,11 +185,11 @@ def parse_instruct(instruct, type):
 
     return task_kwargs, instruct_list, valid
 
-def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3, render=False):
+def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3, num_examples=[2], render=False):
     logger = Logger(task_type)
     # choose to load prompts or generate new prompts
-    # general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:3]  # load prompts
-    general_instructs = prompt_generate(type=task_type, num_prompts=num_prompts)  # generate prompts
+    general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:1]  # load prompts
+    # general_instructs = prompt_generate(type=task_type, num_prompts=num_prompts, num_examples=num_examples)  # generate prompts
 
     for i, general_instruction in enumerate(general_instructs):
         print(f"Progess: {i}/{num_prompts} instructions\n ------------------------\n")
@@ -389,14 +397,20 @@ def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3,
             logger.save(f'data/{prefix}')
 
 if __name__ == "__main__":
-    task_type = ['stack', 'rotate', 'put'][0]
+    task_type = ['stack', 'rotate', 'put'][1]
     model_size = ['4M', '200M'][-1]
     model_ckpt = f'../models/{model_size}.ckpt'
     device = 'cpu'
     num_prompts=100 # how many instructions to test
+    num_examples=[3]
     cots=5 # how many CoTs for each instruction to test
-
-    prefix = f'{model_size}-model_{num_prompts}-prompts_{cots}-CoTs_'
     seed = 42
     policy = create_policy_from_ckpt(model_ckpt, device)
-    rollout(policy, task_type, seed, device, prefix, num_prompts, cots)
+    # prefix = f'{model_size}-model_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_'
+    # rollout(policy, task_type, seed, device, prefix, num_prompts, cots, num_examples)
+
+    N_examples = [1,3,5]
+    for N in N_examples:
+        num_examples = [N]
+        prefix = f'{model_size}-model_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_'
+        rollout(policy, task_type, seed, device, prefix, num_prompts, cots, num_examples)

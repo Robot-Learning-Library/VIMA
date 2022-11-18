@@ -133,8 +133,7 @@ def prompt_construct(type='stack', confs={}, ):
     print(prompt)
     return prompt
 
-def prompt_generate(type ='stack', num_prompts = 5):
-    num_examples = [1,2,3]
+def prompt_generate(type ='stack', num_prompts = 5, num_examples = [1,2,3]):
 
     n_steps = np.arange(TASK_CONFS[type]['min_steps'], TASK_CONFS[type]['max_steps']+1)
 
