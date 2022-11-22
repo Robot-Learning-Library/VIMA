@@ -40,7 +40,7 @@ def query_in_batch(prompts, wandb_activate=False):
     return results
 
 
-def query(gpt_prompt, wandb_activate=False): 
+def query(gpt_prompt, wandb_activate=False, temperature=0.8): 
     openai.api_key = f"{OPENAI_API_KEY}"
     if wandb_activate:
         run = wandb.init(project='GPT-3 in Python')
@@ -49,14 +49,14 @@ def query(gpt_prompt, wandb_activate=False):
     response = openai.Completion.create(
     engine="text-davinci-002",
     prompt=gpt_prompt,
-    temperature=0.8,  # https://beta.openai.com/docs/quickstart/adjust-your-settings
+    temperature=temperature,  # https://beta.openai.com/docs/quickstart/adjust-your-settings
     max_tokens=256,
     top_p=1.0,
     frequency_penalty=0.0,
     presence_penalty=0.0
     )
 
-    print('Query: ', gpt_prompt, response['choices'][0]['text'])
+    print('Query: ', gpt_prompt, 'Response: ', response['choices'][0]['text'])
 
     if wandb_activate:
         prediction_table.add_data(gpt_prompt,response['choices'][0]['text'])

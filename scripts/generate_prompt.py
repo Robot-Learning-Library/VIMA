@@ -1,5 +1,6 @@
 import numpy as np
 from common import *
+from utils import rollout_simulation_with_cot
 
 def sample_discrete(arr, size=1):
     selected = np.random.choice(arr, size)
@@ -47,6 +48,7 @@ def prompt_construct(type='stack', confs={}, ):
 
     elif type == 'rotate':
         prompt = ''
+        verify_through_simulation = True # if True, verify the correctness of the prompt through simulation, only successful prompt will appear in examples
         def get_angles(rot_angle, n):
             rand=np.random.uniform(0,1, n)
             norm_rand=rand/np.sum(rand)*rot_angle
@@ -61,13 +63,30 @@ def prompt_construct(type='stack', confs={}, ):
             ques = f"Q: Rotate {col} {obj} by {rot_angle} degrees in {n} steps: "
             
             ans = " A: "
-            instrs = ''
-            angles = get_angles(rot_angle, n)
-            for i in range(n):
-                instr = ROTATE_TEMPLATE.replace('DRAG_COLOR', col)
-                instr = instr.replace('DRAG_OBJECT', obj)
-                instr = instr.replace('ANGLE', str(angles[i]))
-                instrs += instr
+            if verify_through_simulation:
+                valid = False
+                max_iter = 10  # maximum number of iterations to find a valid CoT
+                itr = 0
+                while not valid and itr < max_iter:
+                    itr += 1
+                    instrs = ''
+                    angles = get_angles(rot_angle, n)  # get n angles, each for one instructionl in CoT
+                    for i in range(n):
+                        instr = ROTATE_TEMPLATE.replace('DRAG_COLOR', col)
+                        instr = instr.replace('DRAG_OBJECT', obj)
+                        instr = instr.replace('ANGLE', str(angles[i]))
+                        instrs += instr
+                    # verify the task is solvable or not
+                    valid = rollout_simulation_with_cot('rotate', instrs)
+                    print(f'Verify: {instrs}, Result: {valid}')
+            else:
+                instrs = ''
+                angles = get_angles(rot_angle, n)
+                for i in range(n):
+                    instr = ROTATE_TEMPLATE.replace('DRAG_COLOR', col)
+                    instr = instr.replace('DRAG_OBJECT', obj)
+                    instr = instr.replace('ANGLE', str(angles[i]))
+                    instrs += instr
 
             prompt += ques + ans + instrs
 
@@ -133,14 +152,16 @@ def prompt_construct(type='stack', confs={}, ):
     print(prompt)
     return prompt
 
-def prompt_generate(type ='stack', num_prompts = 5, num_examples = [1,2,3]):
+def prompt_generate(type ='stack', num_prompts = 5, num_examples = [1,2,3], n_steps=None):
 
-    n_steps = np.arange(TASK_CONFS[type]['min_steps'], TASK_CONFS[type]['max_steps']+1)
+    if n_steps is None:
+        n_steps = np.arange(TASK_CONFS[type]['min_steps'], TASK_CONFS[type]['max_steps']+1)
 
     if type == 'rotate':
         num_objs = [1]
 
     prompts = []
+
     for i in range(num_prompts):
         n_example = np.random.choice(num_examples)
         if type == 'stack': # n steps require at least n+1 objects
@@ -151,6 +172,7 @@ def prompt_generate(type ='stack', num_prompts = 5, num_examples = [1,2,3]):
             p = prompt_construct(type='put', confs={'num_obj': np.random.choice(n_steps, size=n_example+1), 'num_examples': n_example})
 
         prompts.append(p)
+
 
     return prompts
 

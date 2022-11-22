@@ -1,4 +1,5 @@
 import random
+import numpy as np
 from vima_bench import make
 from vima_bench.tasks.components.encyclopedia import ObjPedia
 from vima.utils import *
@@ -8,199 +9,25 @@ from common import *
 from cot_query import load_prompt, query
 from logger import Logger
 from generate_prompt import prompt_generate
+from utils import parse_instruct, task_names
 
 
-task_names = {
-    'stack':'visual_manipulation', 
-    'put':'visual_manipulation', 
-    'rotate': 'rotate'
-    }
-
-unuseful_words = ['the', 'The']
-
-def parse_instruct(instruct, type):
-    valid = True
-
-    if type == 'rotate':
-        # processed_instruct = instruct[4:]  #remove ' A: '
-        processed_instruct = instruct[instruct.index('Rotate'):] # start from 'Rotate', for case: '\nRotate ***'
-        instruct_list = processed_instruct.split('. ') 
-        first_instruct = processed_instruct.split('.')[0] # take first of cot
-        # Rotate blue triangle by 71 degrees.
-        words = first_instruct.split(' ')
-        words = [i for i in words if i not in unuseful_words]  # filter
-
-        anchor_pos1 = words.index('Rotate')
-        anchor_pos2 = words.index('by')
-        color = words[anchor_pos1+1]
-
-        if anchor_pos2 - anchor_pos1 == 4:  # color for 1, two-word obj for 2
-            obj = ' '.join(words[anchor_pos1+2:anchor_pos1+4])
-        else: # color for 1, one-word obj for 1
-            obj = words[anchor_pos1+2]
-
-        # valid check
-        if not color in COLORS:
-            print(color)
-            valid = False
-        
-        if not obj in OBJECTS:
-            print(obj)
-            valid = False
-
-        angles = []
-        for ins in instruct_list:
-            # Rotate blue triangle by 71 degrees.
-            words = ins.split(' ')
-            words = [i for i in words if i not in unuseful_words]  # filter
-            anchor_pos2 = words.index('by')
-            angle = words[anchor_pos2+1]
-            angles.append(int(angle))
-        # print(words, color, obj, angle)
-
-        # COLORS.remove(color)
-        valid_colors = [i for i in COLORS if i not in [color]]
-        distractor_color = random.choice(valid_colors)
-
-        task_kwargs = {
-        'dragged_obj_express_types': "name",
-        'possible_dragged_obj': obj,
-        'possible_dragged_obj_texture': [color],
-        'possible_distractor_obj_texture': [distractor_color], 
-        'specified_angles_of_rotation': angles,
-        }
-
-    elif type == 'stack':
-        # processed_instruct = instruct[4:]  #remove ' A: '
-        processed_instruct = instruct[instruct.index('Put'):] # start from 'Put', for case: '\nPut ***'
-        instruct_list = processed_instruct.split('. ') 
-        drag_obj_list = []
-        base_obj_list = []
-        drag_color_list = []
-        base_color_list = []
-        for ins in instruct_list:
-            # Put purple letter E on purple letter M.
-            words = ins.split(' ')
-            words = [i for i in words if i not in unuseful_words]  # filter
-
-            drag_color = words[words.index('Put')+1]
-
-            if words.index('on') - words.index('Put') == 4:  # color for 1, two-word obj for 2
-                drag_obj = ' '.join(words[words.index('Put')+2:words.index('Put')+4])
-            else: # color for 1, one-word obj for 1
-                drag_obj = words[words.index('Put')+2]
-            base_color = words[words.index('on')+1]
-            if len(words) - (words.index('on')+2) == 2: # two-word obj
-                base_obj = ' '.join(words[words.index('on')+2:words.index('on')+4])
-            else: # one-word obj
-                base_obj = words[words.index('on')+2]
-
-            drag_obj = drag_obj.replace('.', '')
-            base_obj = base_obj.replace('.', '')
-            # valid check
-            if (not drag_color in COLORS) or (not base_color in COLORS):
-                print(drag_color, base_color)
-                valid = False
-            if (not drag_obj in OBJECTS) or (not base_obj in OBJECTS):
-                print(drag_obj, base_obj)
-                valid = False
-            drag_obj_list.append(drag_obj)
-            base_obj_list.append(base_obj)
-            drag_color_list.append(drag_color)
-            base_color_list.append(base_color)
-
-        valid_colors = [i for i in COLORS if i not in drag_color_list+base_color_list]
-        distractor_color = random.choice(valid_colors)
-
-        task_kwargs = {
-        'dragged_obj_express_types': "name",
-        'base_obj_express_types': 'name',
-        'specified_dragged_obj': drag_obj_list,
-        'specified_base_obj': base_obj_list[:1],
-        'specified_dragged_obj_texture': drag_color_list,
-        'specified_base_obj_texture': base_color_list[:1],
-        'possible_distractor_obj_texture': distractor_color,
-        'num_dragged_obj': len(drag_obj_list),
-        }
-
-    elif type == 'put':
-        # processed_instruct = instruct[4:]  #remove ' A: '
-        processed_instruct = instruct[instruct.index('Put'):] # start from 'Put', for case: '\nPut ***'
-        instruct_list = processed_instruct.split('. ') 
-        drag_obj_list = []
-        base_obj_list = []
-        drag_color_list = []
-        base_color_list = []
-        try:
-            for i, ins in enumerate(instruct_list):
-                # Put yellow ring into purple container
-                words = ins.split(' ')
-                words = [i for i in words if i not in unuseful_words]  # filter
-
-                drag_color = words[words.index('Put')+1]
-                if words.index('into') - words.index('Put') == 4:  # color for 1, two-word obj for 2
-                    drag_obj = ' '.join(words[words.index('Put')+2:words.index('Put')+4])
-                else: # color for 1, one-word obj for 1
-                    drag_obj = words[words.index('Put')+2] 
-
-                drag_obj = drag_obj.replace('.', '')
-                drag_obj_list.append(drag_obj)
-                drag_color_list.append(drag_color)
-                # valid check
-                if (not drag_color in COLORS) or (not drag_obj in OBJECTS):
-                    print(drag_color, drag_obj)
-                    valid = False
-        except:
-            print(f'Fail: {instruct_list}')
-            valid = False
-
-        # one instruction for base is sufficient (only one base) 
-        base_color = words[words.index('into')+1]
-        if len(words) - (words.index('into')+2) == 2: # two-word obj
-            base_obj = ' '.join(words[words.index('into')+2:words.index('into')+4])
-        else: # one-word obj
-            base_obj = words[words.index('into')+2] 
-
-        base_obj = base_obj.replace('.', '')
-        if (not base_color in COLORS) or (not base_obj in BASE_OBJECTS):
-            print(base_color, base_obj)
-            valid = False
-        base_obj_list.append(base_obj)
-        base_color_list.append(base_color)
-
-        valid_colors = [i for i in COLORS if i not in drag_color_list+base_color_list]
-        distractor_color = random.choice(valid_colors)
-        # import  pdb; pdb.set_trace()
-
-        task_kwargs = {
-        'dragged_obj_express_types': "name",
-        'base_obj_express_types': 'name',
-        'specified_dragged_obj': drag_obj_list,  # using specified, obj-color is one-to-one mapped
-        'specified_dragged_obj_texture': drag_color_list,
-        'specified_base_obj': base_obj_list,
-        'specified_base_obj_texture': base_color_list,
-        'possible_distractor_obj_texture': distractor_color,
-        'num_dragged_obj': len(drag_obj_list),
-        }
-
-    return task_kwargs, instruct_list, valid
-
-def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3, num_examples=[2], render=False):
+def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3, num_examples=[2], query_temperature=0.8, render=False):
     logger = Logger(task_type)
     # choose to load prompts or generate new prompts
-    general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:1]  # load prompts
-    # general_instructs = prompt_generate(type=task_type, num_prompts=num_prompts, num_examples=num_examples)  # generate prompts
+    # general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:1]  # load prompts
+    general_instructs = prompt_generate(type=task_type, num_prompts=num_prompts, num_examples=num_examples)  # generate prompts
 
     for i, general_instruction in enumerate(general_instructs):
         print(f"Progess: {i}/{num_prompts} instructions\n ------------------------\n")
-        if i % 10 ==0:
-            render = True
-        else:
-            render = False
+        # if i % 10 ==0:
+        #     render = True
+        # else:
+        #     render = False
         
         try: 
             for _ in range(cots):
-                CoT_prompt = query(general_instruction)
+                CoT_prompt = query(general_instruction, temperature=query_temperature)
 
                 task_name = task_names[task_type]
                 try:
@@ -402,15 +229,27 @@ if __name__ == "__main__":
     model_ckpt = f'../models/{model_size}.ckpt'
     device = 'cpu'
     num_prompts=100 # how many instructions to test
-    num_examples=[3]
+    num_examples=[5]
     cots=5 # how many CoTs for each instruction to test
     seed = 42
     policy = create_policy_from_ckpt(model_ckpt, device)
-    # prefix = f'{model_size}-model_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_'
-    # rollout(policy, task_type, seed, device, prefix, num_prompts, cots, num_examples)
+    prefix = f'{model_size}-model_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_'
+    rollout(policy, task_type, seed, device, prefix, num_prompts, cots, num_examples)
 
-    N_examples = [1,3,5]
-    for N in N_examples:
-        num_examples = [N]
-        prefix = f'{model_size}-model_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_'
-        rollout(policy, task_type, seed, device, prefix, num_prompts, cots, num_examples)
+
+    # experiments with different number of examples
+    # N_examples = [1,3,5]
+    # tasks = ['stack', 'rotate', 'put']
+    # N_examples = [3,5]
+    # tasks = ['rotate']
+    # for task_type in tasks:
+    #     for N in N_examples:
+    #         num_examples = [N]
+    #         prefix = f'{model_size}-model_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_'
+    #         rollout(policy, task_type, seed, device, prefix, num_prompts, cots, num_examples)
+
+    # experiments with different query temperatures
+    # query_temperatures = [0.6, 1.]
+    # for query_temperature in query_temperatures:
+    #     prefix = f'{model_size}-model_{query_temperature}-temperature_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_'
+    #     rollout(policy, task_type, seed, device, prefix, num_prompts, cots, num_examples, query_temperature)
