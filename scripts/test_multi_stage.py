@@ -233,7 +233,7 @@ if __name__ == "__main__":
     cots=5 # how many CoTs for each instruction to test
     seed = 42
     policy = create_policy_from_ckpt(model_ckpt, device)
-    prefix = f'{model_size}-model_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_'
+    prefix = f'{model_size}-model_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_verified_'
     rollout(policy, task_type, seed, device, prefix, num_prompts, cots, num_examples)
 
 

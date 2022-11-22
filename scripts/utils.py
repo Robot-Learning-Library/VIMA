@@ -359,6 +359,7 @@ def rollout_simulation_with_cot(task_type, CoT_prompt, seed=42, device = 'cpu'):
                     break
             step_successes.append(success)
         overall_success = all(step_successes)  # sucess for all prompts is final success
+        env.close()
     else:
         overall_success = False
 
