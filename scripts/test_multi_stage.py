@@ -12,10 +12,10 @@ from generate_prompt import prompt_generate
 from utils import parse_instruct, task_names
 
 
-def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3, num_examples=[2], query_temperature=0.8, render=False):
+def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3, num_examples=[2], query_temperature=0.8, render=True):
     logger = Logger(task_type)
     # choose to load prompts or generate new prompts
-    # general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[:1]  # load prompts
+    # general_instructs = load_prompt(folder=f'prompts/{task_type}_prompts.npy')[4:10]  # load prompts
     general_instructs = prompt_generate(type=task_type, num_prompts=num_prompts, num_examples=num_examples)  # generate prompts
 
     for i, general_instruction in enumerate(general_instructs):
@@ -56,7 +56,7 @@ def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3,
                         ),
                         bonus_steps=2,
                     )
-                    
+
                     # run the env for multi-stage manipulation
                     for prompt_step, prompt in enumerate(CoT_prompt): # loop over instruction in CoT
                         env.global_seed = seed
@@ -64,6 +64,7 @@ def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3,
                         keep_scene=False
                         if prompt_step > 0:
                             keep_scene=True
+
                         obs = env.reset(prompt, keep_scene=keep_scene, task_type=task_type)
 
                         if render: env.render()
@@ -201,9 +202,11 @@ def rollout(policy, task_type, seed, device, prefix='', num_prompts=100, cots=3,
                             )
                             actions = {k: v.cpu().numpy() for k, v in actions.items()}
                             actions = any_slice(actions, np.s_[0, 0])
+                            if render: env.render()
                             obs, _, done, info = env.step(actions)
                             elapsed_steps += 1
                             success = info['success']
+                            
                             print(f'step: {elapsed_steps}, success: {success}')
                             if done:
                                 break
@@ -228,9 +231,9 @@ if __name__ == "__main__":
     model_size = ['4M', '200M'][-1]
     model_ckpt = f'../models/{model_size}.ckpt'
     device = 'cpu'
-    num_prompts=100 # how many instructions to test
-    num_examples=[5]
-    cots=5 # how many CoTs for each instruction to test
+    num_prompts=5 # how many instructions to test
+    num_examples=[3]
+    cots=1 # how many CoTs for each instruction to test
     seed = 42
     policy = create_policy_from_ckpt(model_ckpt, device)
     prefix = f'{model_size}-model_{num_examples}-examples_{num_prompts}-prompts_{cots}-CoTs_verified_'
@@ -240,7 +243,7 @@ if __name__ == "__main__":
     # experiments with different number of examples
     # N_examples = [1,3,5]
     # tasks = ['stack', 'rotate', 'put']
-    # N_examples = [3,5]
+    # N_examples = [3]
     # tasks = ['rotate']
     # for task_type in tasks:
     #     for N in N_examples:

@@ -1,5 +1,6 @@
 import numpy as np
 from common import *
+from example import *
 from utils import rollout_simulation_with_cot
 
 def sample_discrete(arr, size=1):
@@ -48,7 +49,7 @@ def prompt_construct(type='stack', confs={}, ):
 
     elif type == 'rotate':
         prompt = ''
-        verify_through_simulation = True # if True, verify the correctness of the prompt through simulation, only successful prompt will appear in examples
+        verify_through_simulation = False # if True, verify the correctness of the prompt through simulation, only successful prompt will appear in examples
         def get_angles(rot_angle, n):
             rand=np.random.uniform(0,1, n)
             norm_rand=rand/np.sum(rand)*rot_angle
@@ -64,6 +65,11 @@ def prompt_construct(type='stack', confs={}, ):
             
             ans = " A: "
             if verify_through_simulation:
+                # load policy
+                model_size = ['4M', '200M'][-1]
+                model_ckpt = f'../models/{model_size}.ckpt'
+                policy = create_policy_from_ckpt(model_ckpt, device='cpu')
+
                 valid = False
                 max_iter = 10  # maximum number of iterations to find a valid CoT
                 itr = 0
@@ -77,8 +83,9 @@ def prompt_construct(type='stack', confs={}, ):
                         instr = instr.replace('ANGLE', str(angles[i]))
                         instrs += instr
                     # verify the task is solvable or not
-                    valid = rollout_simulation_with_cot('rotate', instrs)
-                    print(f'Verify: {instrs}, Result: {valid}')
+                    valid = rollout_simulation_with_cot('rotate', instrs, policy=policy)
+                    # print(f'Verify: {instrs}, Result: {valid}')
+                    print(f"Verify for {j}th example, {itr}th iteration: {valid}")
             else:
                 instrs = ''
                 angles = get_angles(rot_angle, n)

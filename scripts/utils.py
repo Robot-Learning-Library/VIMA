@@ -184,183 +184,189 @@ def parse_instruct(instruct, type):
     return task_kwargs, instruct_list, valid
 
 
-def rollout_simulation_with_cot(task_type, CoT_prompt, seed=42, device = 'cpu'):
+def rollout_simulation_with_cot(task_type, CoT_prompt, policy=None, seed=42, device = 'cpu'):
     # load policy
-    model_size = ['4M', '200M'][-1]
-    model_ckpt = f'../models/{model_size}.ckpt'
-    policy = create_policy_from_ckpt(model_ckpt, device)
+    if policy is None:
+        model_size = ['4M', '200M'][-1]
+        model_ckpt = f'../models/{model_size}.ckpt'
+        policy = create_policy_from_ckpt(model_ckpt, device)
 
     step_successes = []
     task_kwargs, CoT_prompt, valid = parse_instruct(CoT_prompt, task_type)
     task_name = task_names[task_type]
-    if valid:
-        render = False
-        env = TimeLimitWrapper(
-            ResetFaultToleranceWrapper(
-                make(
-                    task_name=task_name,
-                    modalities=["segm", "rgb"],
-                    task_kwargs=task_kwargs,
-                    seed=seed,
-                    render_prompt=render,
-                    display_debug_window=render,
-                    hide_arm_rgb=False,
-                    )
-            ),
-            bonus_steps=2,
-        )
-        
-        for prompt_step, prompt in enumerate(CoT_prompt): # loop over instruction in CoT
-            env.global_seed = seed
-            # prompt = None
-            keep_scene=False
-            if prompt_step > 0:
-                keep_scene=True
-            obs = env.reset(prompt, keep_scene=keep_scene, task_type=task_type)
+    try: 
+        if valid:
+            render = False
+            env = TimeLimitWrapper(
+                ResetFaultToleranceWrapper(
+                    make(
+                        task_name=task_name,
+                        modalities=["segm", "rgb"],
+                        task_kwargs=task_kwargs,
+                        seed=seed,
+                        render_prompt=render,
+                        display_debug_window=render,
+                        hide_arm_rgb=False,
+                        )
+                ),
+                bonus_steps=2,
+            )
+            
+            for prompt_step, prompt in enumerate(CoT_prompt): # loop over instruction in CoT
+                env.global_seed = seed
+                # prompt = None
+                keep_scene=False
+                if prompt_step > 0:
+                    keep_scene=True
+                obs = env.reset(prompt, keep_scene=keep_scene, task_type=task_type)
 
-            meta_info = env.meta_info
-            prompt = env.prompt
-            prompt_assets = env.prompt_assets
-            elapsed_steps = 0
-            inference_cache = {}
-            print('next round: ', prompt)
-            while True:
-                if elapsed_steps == 0:
-                    prompt_token_type, word_batch, image_batch = prepare_prompt(
-                        prompt=prompt, prompt_assets=prompt_assets, views=["front", "top"]
-                    )
-                    word_batch = word_batch.to(device)
-                    if len(image_batch) > 0:
-                        image_batch = image_batch.to_torch_tensor(device=device)
-                    prompt_tokens, prompt_masks = policy.forward_prompt_assembly(
-                        (prompt_token_type, word_batch, image_batch)
-                    )
+                meta_info = env.meta_info
+                prompt = env.prompt
+                prompt_assets = env.prompt_assets
+                elapsed_steps = 0
+                inference_cache = {}
+                print('next round: ', prompt)
+                while True:
+                    if elapsed_steps == 0:
+                        prompt_token_type, word_batch, image_batch = prepare_prompt(
+                            prompt=prompt, prompt_assets=prompt_assets, views=["front", "top"]
+                        )
+                        word_batch = word_batch.to(device)
+                        if len(image_batch) > 0:
+                            image_batch = image_batch.to_torch_tensor(device=device)
+                        prompt_tokens, prompt_masks = policy.forward_prompt_assembly(
+                            (prompt_token_type, word_batch, image_batch)
+                        )
 
-                    inference_cache["obs_tokens"] = []
-                    inference_cache["obs_masks"] = []
-                    inference_cache["action_tokens"] = []
-                obs["ee"] = np.asarray(obs["ee"])
-                obs = add_batch_dim(obs)
-                obs = prepare_obs(obs=obs, rgb_dict=None, meta=meta_info).to_torch_tensor(
-                    device=device
-                )
-                obs_token_this_step, obs_mask_this_step = policy.forward_obs_token(obs)
-                obs_token_this_step = obs_token_this_step.squeeze(0)
-                obs_mask_this_step = obs_mask_this_step.squeeze(0)
-                inference_cache["obs_tokens"].append(obs_token_this_step[0])
-                inference_cache["obs_masks"].append(obs_mask_this_step[0])
-                max_objs = max(x.shape[0] for x in inference_cache["obs_tokens"])
-                obs_tokens_to_forward, obs_masks_to_forward = [], []
-                obs_tokens_this_env, obs_masks_this_env = [], []
-                for idx in range(len(inference_cache["obs_tokens"])):
-                    obs_this_env_this_step = inference_cache["obs_tokens"][idx]
-                    obs_mask_this_env_this_step = inference_cache["obs_masks"][idx]
-                    required_pad = max_objs - obs_this_env_this_step.shape[0]
-                    obs_tokens_this_env.append(
-                        any_concat(
-                            [
-                                obs_this_env_this_step,
-                                torch.zeros(
-                                    required_pad,
-                                    obs_this_env_this_step.shape[1],
-                                    device=device,
-                                    dtype=obs_this_env_this_step.dtype,
-                                ),
-                            ],
+                        inference_cache["obs_tokens"] = []
+                        inference_cache["obs_masks"] = []
+                        inference_cache["action_tokens"] = []
+                    obs["ee"] = np.asarray(obs["ee"])
+                    obs = add_batch_dim(obs)
+                    obs = prepare_obs(obs=obs, rgb_dict=None, meta=meta_info).to_torch_tensor(
+                        device=device
+                    )
+                    obs_token_this_step, obs_mask_this_step = policy.forward_obs_token(obs)
+                    obs_token_this_step = obs_token_this_step.squeeze(0)
+                    obs_mask_this_step = obs_mask_this_step.squeeze(0)
+                    inference_cache["obs_tokens"].append(obs_token_this_step[0])
+                    inference_cache["obs_masks"].append(obs_mask_this_step[0])
+                    max_objs = max(x.shape[0] for x in inference_cache["obs_tokens"])
+                    obs_tokens_to_forward, obs_masks_to_forward = [], []
+                    obs_tokens_this_env, obs_masks_this_env = [], []
+                    for idx in range(len(inference_cache["obs_tokens"])):
+                        obs_this_env_this_step = inference_cache["obs_tokens"][idx]
+                        obs_mask_this_env_this_step = inference_cache["obs_masks"][idx]
+                        required_pad = max_objs - obs_this_env_this_step.shape[0]
+                        obs_tokens_this_env.append(
+                            any_concat(
+                                [
+                                    obs_this_env_this_step,
+                                    torch.zeros(
+                                        required_pad,
+                                        obs_this_env_this_step.shape[1],
+                                        device=device,
+                                        dtype=obs_this_env_this_step.dtype,
+                                    ),
+                                ],
+                                dim=0,
+                            )
+                        )
+                        obs_masks_this_env.append(
+                            any_concat(
+                                [
+                                    obs_mask_this_env_this_step,
+                                    torch.zeros(
+                                        required_pad,
+                                        device=device,
+                                        dtype=obs_mask_this_env_this_step.dtype,
+                                    ),
+                                ],
+                                dim=0,
+                            )
+                        )
+                    obs_tokens_to_forward.append(any_stack(obs_tokens_this_env, dim=0))
+                    obs_masks_to_forward.append(any_stack(obs_masks_this_env, dim=0))
+                    obs_tokens_to_forward = any_stack(obs_tokens_to_forward, dim=0)
+                    obs_masks_to_forward = any_stack(obs_masks_to_forward, dim=0)
+                    obs_tokens_to_forward = obs_tokens_to_forward.transpose(0, 1)
+                    obs_masks_to_forward = obs_masks_to_forward.transpose(0, 1)
+
+                    if elapsed_steps == 0:
+                        action_tokens_to_forward = None
+                    else:
+                        action_tokens_to_forward = any_stack(
+                            [any_stack(inference_cache["action_tokens"], dim=0)],
                             dim=0,
                         )
+                        action_tokens_to_forward = action_tokens_to_forward.transpose(0, 1)
+                    predicted_action_tokens = policy.forward(
+                        obs_token=obs_tokens_to_forward,
+                        action_token=action_tokens_to_forward,
+                        prompt_token=prompt_tokens,
+                        prompt_token_mask=prompt_masks,
+                        obs_mask=obs_masks_to_forward,
+                    )  # (L, B, E)
+                    predicted_action_tokens = predicted_action_tokens[-1].unsqueeze(
+                        0
+                    )  # (1, B, E)
+                    dist_dict = policy.forward_action_decoder(predicted_action_tokens)
+                    actions = {k: v.mode() for k, v in dist_dict.items()}
+                    action_tokens = policy.forward_action_token(actions)  # (1, B, E)
+                    action_tokens = action_tokens.squeeze(0)  # (B, E)
+                    inference_cache["action_tokens"].append(action_tokens[0])
+                    actions = policy._de_discretize_actions(actions)
+                    action_bounds = [meta_info["action_bounds"]]
+                    action_bounds_low = [action_bound["low"] for action_bound in action_bounds]
+                    action_bounds_high = [
+                        action_bound["high"] for action_bound in action_bounds
+                    ]
+                    action_bounds_low = np.asarray(action_bounds_low)
+                    action_bounds_high = np.asarray(action_bounds_high)
+                    action_bounds_low = torch.tensor(
+                        action_bounds_low, dtype=torch.float32, device=device
                     )
-                    obs_masks_this_env.append(
-                        any_concat(
-                            [
-                                obs_mask_this_env_this_step,
-                                torch.zeros(
-                                    required_pad,
-                                    device=device,
-                                    dtype=obs_mask_this_env_this_step.dtype,
-                                ),
-                            ],
-                            dim=0,
-                        )
+                    action_bounds_high = torch.tensor(
+                        action_bounds_high, dtype=torch.float32, device=device
                     )
-                obs_tokens_to_forward.append(any_stack(obs_tokens_this_env, dim=0))
-                obs_masks_to_forward.append(any_stack(obs_masks_this_env, dim=0))
-                obs_tokens_to_forward = any_stack(obs_tokens_to_forward, dim=0)
-                obs_masks_to_forward = any_stack(obs_masks_to_forward, dim=0)
-                obs_tokens_to_forward = obs_tokens_to_forward.transpose(0, 1)
-                obs_masks_to_forward = obs_masks_to_forward.transpose(0, 1)
+                    actions["pose0_position"] = (
+                        actions["pose0_position"] * (action_bounds_high - action_bounds_low)
+                        + action_bounds_low
+                    )
+                    actions["pose1_position"] = (
+                        actions["pose1_position"] * (action_bounds_high - action_bounds_low)
+                        + action_bounds_low
+                    )
+                    actions["pose0_position"] = torch.clamp(
+                        actions["pose0_position"], min=action_bounds_low, max=action_bounds_high
+                    )
+                    actions["pose1_position"] = torch.clamp(
+                        actions["pose1_position"], min=action_bounds_low, max=action_bounds_high
+                    )
+                    actions["pose0_rotation"] = actions["pose0_rotation"] * 2 - 1
+                    actions["pose1_rotation"] = actions["pose1_rotation"] * 2 - 1
+                    actions["pose0_rotation"] = torch.clamp(
+                        actions["pose0_rotation"], min=-1, max=1
+                    )
+                    actions["pose1_rotation"] = torch.clamp(
+                        actions["pose1_rotation"], min=-1, max=1
+                    )
+                    actions = {k: v.cpu().numpy() for k, v in actions.items()}
+                    actions = any_slice(actions, np.s_[0, 0])
+                    obs, _, done, info = env.step(actions)
+                    elapsed_steps += 1
+                    success = info['success']
+                    print(f'step: {elapsed_steps}, success: {success}')
+                    if done:
+                        break
+                step_successes.append(success)
+            overall_success = all(step_successes)  # sucess for all prompts is final success
+            env.close()
+        else:
+            overall_success = False
 
-                if elapsed_steps == 0:
-                    action_tokens_to_forward = None
-                else:
-                    action_tokens_to_forward = any_stack(
-                        [any_stack(inference_cache["action_tokens"], dim=0)],
-                        dim=0,
-                    )
-                    action_tokens_to_forward = action_tokens_to_forward.transpose(0, 1)
-                predicted_action_tokens = policy.forward(
-                    obs_token=obs_tokens_to_forward,
-                    action_token=action_tokens_to_forward,
-                    prompt_token=prompt_tokens,
-                    prompt_token_mask=prompt_masks,
-                    obs_mask=obs_masks_to_forward,
-                )  # (L, B, E)
-                predicted_action_tokens = predicted_action_tokens[-1].unsqueeze(
-                    0
-                )  # (1, B, E)
-                dist_dict = policy.forward_action_decoder(predicted_action_tokens)
-                actions = {k: v.mode() for k, v in dist_dict.items()}
-                action_tokens = policy.forward_action_token(actions)  # (1, B, E)
-                action_tokens = action_tokens.squeeze(0)  # (B, E)
-                inference_cache["action_tokens"].append(action_tokens[0])
-                actions = policy._de_discretize_actions(actions)
-                action_bounds = [meta_info["action_bounds"]]
-                action_bounds_low = [action_bound["low"] for action_bound in action_bounds]
-                action_bounds_high = [
-                    action_bound["high"] for action_bound in action_bounds
-                ]
-                action_bounds_low = np.asarray(action_bounds_low)
-                action_bounds_high = np.asarray(action_bounds_high)
-                action_bounds_low = torch.tensor(
-                    action_bounds_low, dtype=torch.float32, device=device
-                )
-                action_bounds_high = torch.tensor(
-                    action_bounds_high, dtype=torch.float32, device=device
-                )
-                actions["pose0_position"] = (
-                    actions["pose0_position"] * (action_bounds_high - action_bounds_low)
-                    + action_bounds_low
-                )
-                actions["pose1_position"] = (
-                    actions["pose1_position"] * (action_bounds_high - action_bounds_low)
-                    + action_bounds_low
-                )
-                actions["pose0_position"] = torch.clamp(
-                    actions["pose0_position"], min=action_bounds_low, max=action_bounds_high
-                )
-                actions["pose1_position"] = torch.clamp(
-                    actions["pose1_position"], min=action_bounds_low, max=action_bounds_high
-                )
-                actions["pose0_rotation"] = actions["pose0_rotation"] * 2 - 1
-                actions["pose1_rotation"] = actions["pose1_rotation"] * 2 - 1
-                actions["pose0_rotation"] = torch.clamp(
-                    actions["pose0_rotation"], min=-1, max=1
-                )
-                actions["pose1_rotation"] = torch.clamp(
-                    actions["pose1_rotation"], min=-1, max=1
-                )
-                actions = {k: v.cpu().numpy() for k, v in actions.items()}
-                actions = any_slice(actions, np.s_[0, 0])
-                obs, _, done, info = env.step(actions)
-                elapsed_steps += 1
-                success = info['success']
-                print(f'step: {elapsed_steps}, success: {success}')
-                if done:
-                    break
-            step_successes.append(success)
-        overall_success = all(step_successes)  # sucess for all prompts is final success
+    except:
+        print(f'Fail to test with CoT: {CoT_prompt}!')
         env.close()
-    else:
         overall_success = False
-
     return overall_success
