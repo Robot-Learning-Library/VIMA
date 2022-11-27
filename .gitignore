@@ -6,6 +6,7 @@ models/
 *.npy
 *.csv
 *.zip
+scripts/private.py
 
 # C extensions
 *.so
