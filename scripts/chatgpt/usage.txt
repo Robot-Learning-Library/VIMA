@@ -1,0 +1,7 @@
+ref: https://github.com/mmabrouk/chatgpt-wrapper
+
+install:
+
+pip install git+https://github.com/mmabrouk/chatgpt-wrapper
+chatgpt install  # with login for first time
+chatgpt
