@@ -5,3 +5,9 @@ install:
 pip install git+https://github.com/mmabrouk/chatgpt-wrapper
 chatgpt install  # with login for first time
 chatgpt
+
+use conda env x:
+python query.py
+
+use conda env vima:
+python openai_api.py
