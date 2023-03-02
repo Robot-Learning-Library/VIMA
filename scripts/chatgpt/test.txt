@@ -1,1 +1,42 @@
-Hello there! How can I assist you today?
+
+
+Sure, here is an example of how we can use the low-level functions to make an omelette:
+
+```python
+# First, let's define some high-level functions that will help us make the omelette.
+
+def get_ingredients():
+    # This function will go to the fridge, locate the eggs and oil, and pick them up.
+    go_to_location("fridge")
+    eggs_location = locate_object("eggs")
+    pick_up("eggs")
+    oil_location = locate_object("oil")
+    pick_up("oil")
+    return eggs_location, oil_location
+
+def crack_eggs(eggs_location):
+    # This function will go to the bowl, locate it, and use the eggs in it.
+    go_to_location("bowl")
+    bowl_location = locate_object("bowl")
+    go_to_location(bowl_location)
+    use_item("eggs")
+
+def heat_pan():
+    # This function will go to the stove, locate the pan, and use it with the oil.
+    go_to_location("stove")
+    pan_location = locate_object("pan")
+    go_to_location(pan_location)
+    use_item("oil")
+    use_item("pan")
+
+def make_omelette():
+    # This function will call the above functions in order to make the omelette.
+    eggs_location, oil_location = get_ingredients()
+    crack_eggs(eggs_location)
+    heat_pan()
+
+# Now we can call the `make_omelette` function to make the omelette.
+make_omelette()
+```
+
+Note that this code assumes that the robot already knows the location of the objects in the kitchen. If that's not the case, we may need to first write some code to explore the kitchen and map the locations of the objects.
