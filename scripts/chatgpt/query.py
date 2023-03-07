@@ -1,5 +1,5 @@
 from chatgpt_wrapper import ChatGPT
-from text2audio import text_to_audio
+
 
 bot = ChatGPT()
 response = bot.ask("Hello, world!")
@@ -12,4 +12,4 @@ with open('test.txt', 'w') as f:
 
 print(response)  # prints the response from chatGPT
 
-text_to_audio(response)  # converts the response to audio and plays it
+
