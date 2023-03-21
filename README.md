@@ -1,4 +1,6 @@
 ## Usage for modified version
+In `scripts/`,
+
 1. Run single stage manipulation:
 ```
 # specifying task type, kwargs, test_prompt in the script
