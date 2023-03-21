@@ -1,3 +1,18 @@
+## Usage for modified version
+1. Run single stage manipulation:
+```
+# specifying task type, kwargs, test_prompt in the script
+python test.py
+```
+
+2. Run multi-stage manipulation:
+```
+# generate example prompt dataset for each task (by specifying task name in the script)
+python generate_prompt.py
+# run multi-stage test, CoT query with OpenAI API is automatically called (you may need your own OpenAI API by replacing private.py)
+python test_multi_stage.py
+```
+
 # VIMA: General Robot Manipulation with Multimodal Prompts
 <div align="center">
 
